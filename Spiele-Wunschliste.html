@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spiele-Wunschliste</title>
+<style>
+  :root {
+    --bg: #12141c;
+    --surface: #1c1f2b;
+    --surface-2: #262a3a;
+    --border: #353a50;
+    --text: #eceef6;
+    --muted: #9aa1bd;
+    --accent: #7c8cff;
+    --accent-2: #5ee6b8;
+    --danger: #ff6b7a;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f3f4fa;
+      --surface: #ffffff;
+      --surface-2: #eceefa;
+      --border: #d3d6e8;
+      --text: #1b1e2d;
+      --muted: #5d6482;
+      --accent: #4a5ae8;
+      --accent-2: #0f9d76;
+      --danger: #d6293f;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
+  header h1 { margin: 0 0 4px; font-size: clamp(1.6rem, 4vw, 2.3rem); }
+  header p { margin: 0 0 24px; color: var(--muted); }
+
+  :focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ---------- Formular ---------- */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  .panel h2 { margin: 0 0 14px; font-size: 1.15rem; }
+  .form-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-weight: 600; font-size: .92rem; }
+  .field .hint { font-size: .8rem; color: var(--muted); }
+  .req { color: var(--danger); }
+  input[type="text"], input[type="search"], input[type="url"], input[type="file"], select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font: inherit;
+  }
+  input[aria-invalid="true"] { border-color: var(--danger); }
+  .error-text { color: var(--danger); font-size: .82rem; min-height: 1.1em; margin: 0; }
+  .form-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; align-items: center; }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    padding: 10px 16px;
+    font-weight: 600;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger { color: var(--danger); }
+  button.danger:hover { border-color: var(--danger); }
+  button.small { padding: 6px 10px; font-size: .85rem; }
+
+  .status {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: .9rem;
+    display: none;
+  }
+  .status.show { display: block; }
+  .status.ok { background: color-mix(in srgb, var(--accent-2) 18%, transparent); border: 1px solid var(--accent-2); }
+  .status.err { background: color-mix(in srgb, var(--danger) 16%, transparent); border: 1px solid var(--danger); }
+
+  .preview-row { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+  .preview-row[hidden] { display: none; }
+  .preview-row img { width: 48px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+
+  /* ---------- Werkzeugleiste ---------- */
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    margin-bottom: 14px;
+  }
+  .toolbar .search { flex: 1 1 220px; }
+  .segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .segmented button {
+    border: 0; border-radius: 0; background: var(--surface);
+    padding: 9px 14px;
+  }
+  .segmented button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .counter { color: var(--muted); font-size: .9rem; margin: 0 0 16px; }
+
+  /* ---------- Galerie ---------- */
+  .gallery {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; gap: 18px;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+  .card.played .cover-link { filter: grayscale(.6) brightness(.8); }
+  .cover-link {
+    display: block; position: relative;
+    aspect-ratio: 3 / 4; background: var(--surface-2);
+    text-decoration: none; color: inherit;
+  }
+  .cover-link img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .fallback {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 14px;
+    font-weight: 800; font-size: 1.1rem; line-height: 1.2;
+    color: #fff; word-break: break-word;
+  }
+  .badge {
+    position: absolute; top: 8px; right: 8px;
+    background: var(--accent-2); color: #08261c;
+    font-size: .72rem; font-weight: 800;
+    padding: 3px 8px; border-radius: 999px;
+  }
+  .card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .card-title { margin: 0; font-size: 1rem; font-weight: 700; word-break: break-word; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: .9rem; cursor: pointer; }
+  .check input { width: 20px; height: 20px; accent-color: var(--accent-2); cursor: pointer; }
+  .card-actions { display: flex; gap: 6px; margin-top: auto; }
+  .card-actions button { flex: 1; }
+
+  .empty {
+    text-align: center; color: var(--muted);
+    border: 2px dashed var(--border); border-radius: var(--radius);
+    padding: 40px 16px;
+  }
+  .empty[hidden] { display: none; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  @media (max-width: 480px) {
+    .gallery { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎮 Meine Spiele-Wunschliste</h1>
+    <p></p>
+  </header>
+
+  <!-- Formular zum Hinzufügen / Bearbeiten -->
+  <section class="panel" aria-labelledby="form-title">
+    <h2 id="form-title">Spiel hinzufügen</h2>
+    <form id="game-form" novalidate>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-name">Spielname <span class="req" aria-hidden="true">*</span></label>
+          <input type="text" id="f-name" maxlength="120" autocomplete="off" required aria-describedby="err-name">
+          <p class="error-text" id="err-name" role="alert"></p>
+        </div>
+        <div class="field">
+          <label for="f-link">Spiele-Link <span class="req" aria-hidden="true">*</span></label>
+          <input type="url" id="f-link" placeholder="https://store.example.com/spiel" autocomplete="off" required aria-describedby="err-link">
+          <p class="error-text" id="err-link" role="alert"></p>
+        </div>
+        <div class="field">
+          <label for="f-cover-url">Cover-Bild-URL (optional)</label>
+          <input type="url" id="f-cover-url" placeholder="https://…/cover.jpg" autocomplete="off" aria-describedby="err-cover-url">
+          <p class="error-text" id="err-cover-url" role="alert"></p>
+        </div>
+        <div class="field">
+          <label for="f-cover-file">Oder lokale Bilddatei (optional)</label>
+          <input type="file" id="f-cover-file" accept="image/*" aria-describedby="hint-file err-cover-file">
+          <span class="hint" id="hint-file">Eine hochgeladene Datei hat Vorrang vor der URL.</span>
+          <p class="error-text" id="err-cover-file" role="alert"></p>
+          <div class="preview-row" id="current-cover" hidden>
+            <img id="current-cover-img" alt="Aktuelles Cover">
+            <label class="check"><input type="checkbox" id="f-remove-cover"> Aktuelles Cover entfernen</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="primary" id="submit-btn">Hinzufügen</button>
+        <button type="button" id="cancel-edit" hidden>Bearbeitung abbrechen</button>
+      </div>
+      <div class="status" id="form-status" role="status" aria-live="polite"></div>
+    </form>
+  </section>
+
+  <!-- Suche & Filter -->
+  <section aria-label="Suche und Filter">
+    <div class="toolbar">
+      <div class="search">
+        <label for="search" class="sr-only">Nach Spielnamen suchen</label>
+        <input type="search" id="search" placeholder="Spiele durchsuchen …" autocomplete="off">
+      </div>
+      <div class="segmented" role="group" aria-label="Status-Filter">
+        <button type="button" data-filter="all" aria-pressed="true">Alle</button>
+        <button type="button" data-filter="open" aria-pressed="false">Offen</button>
+        <button type="button" data-filter="played" aria-pressed="false">Gespielt</button>
+      </div>
+    </div>
+    <p class="counter" id="counter" aria-live="polite"></p>
+  </section>
+
+  <!-- Galerie -->
+  <main>
+    <ul class="gallery" id="gallery" aria-label="Spiele-Galerie"></ul>
+    <div class="empty" id="empty" hidden></div>
+  </main>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* =====================================================
+   * Konstanten & Zustand
+   * ===================================================== */
+  const LS_KEY = 'spiele-wunschliste.v1';
+  const DB_NAME = 'spiele-wunschliste-db';
+  const DB_STORE = 'covers';
+  const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8 MB pro Bilddatei
+
+  let games = [];           // [{id, name, link, coverUrl, hasLocalCover, played, createdAt}]
+  let editingId = null;     // ID des gerade bearbeiteten Spiels
+  let filter = 'all';
+  let query = '';
+  const coverUrls = new Map(); // id -> Object-URL der lokalen Bilder
+  let db = null;               // IndexedDB-Verbindung (oder null, wenn nicht verfügbar)
+
+  /* =====================================================
+   * DOM-Referenzen
+   * ===================================================== */
+  const $ = (id) => document.getElementById(id);
+  const form = $('game-form');
+  const fName = $('f-name'), fLink = $('f-link'), fCoverUrl = $('f-cover-url'), fCoverFile = $('f-cover-file');
+  const fRemoveCover = $('f-remove-cover');
+  const currentCover = $('current-cover'), currentCoverImg = $('current-cover-img');
+  const errName = $('err-name'), errLink = $('err-link'), errCoverUrl = $('err-cover-url'), errCoverFile = $('err-cover-file');
+  const submitBtn = $('submit-btn'), cancelBtn = $('cancel-edit'), formTitle = $('form-title');
+  const statusBox = $('form-status');
+  const gallery = $('gallery'), emptyBox = $('empty'), counter = $('counter');
+  const searchInput = $('search');
+
+  /* =====================================================
+   * IndexedDB (lokale Coverdateien)
+   * ===================================================== */
+  function openDb() {
+    return new Promise((resolve) => {
+      if (!('indexedDB' in window)) return resolve(null);
+      let req;
+      try { req = indexedDB.open(DB_NAME, 1); } catch (e) { return resolve(null); }
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains(DB_STORE)) req.result.createObjectStore(DB_STORE);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+      req.onblocked = () => resolve(null);
+    });
+  }
+  function dbRun(mode, fn) {
+    return new Promise((resolve, reject) => {
+      if (!db) return reject(new Error('IndexedDB nicht verfügbar'));
+      try {
+        const tx = db.transaction(DB_STORE, mode);
+        const store = tx.objectStore(DB_STORE);
+        const req = fn(store);
+        tx.oncomplete = () => resolve(req ? req.result : undefined);
+        tx.onerror = () => reject(tx.error || new Error('IndexedDB-Fehler'));
+        tx.onabort = () => reject(tx.error || new Error('IndexedDB-Transaktion abgebrochen'));
+      } catch (e) { reject(e); }
+    });
+  }
+  const dbPut = (id, blob) => dbRun('readwrite', (s) => s.put(blob, id));
+  const dbGet = (id) => dbRun('readonly', (s) => s.get(id));
+  const dbDelete = (id) => dbRun('readwrite', (s) => s.delete(id));
+
+  /* =====================================================
+   * localStorage (Metadaten)
+   * ===================================================== */
+  function loadGames() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      const data = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(data)) return [];
+      // Nur wohlgeformte Einträge übernehmen
+      return data.filter((g) => g && typeof g.id === 'string' && typeof g.name === 'string' && typeof g.link === 'string')
+        .map((g) => ({
+          id: g.id,
+          name: g.name,
+          link: g.link,
+          coverUrl: typeof g.coverUrl === 'string' ? g.coverUrl : '',
+          hasLocalCover: !!g.hasLocalCover,
+          played: !!g.played,
+          createdAt: Number(g.createdAt) || Date.now()
+        }));
+    } catch (e) { return []; }
+  }
+  function saveGames() {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(games));
+      return true;
+    } catch (e) {
+      showStatus('Die Daten konnten nicht im Browser gespeichert werden (Speicher voll oder blockiert).', 'err');
+      return false;
+    }
+  }
+
+  /* =====================================================
+   * Hilfsfunktionen
+   * ===================================================== */
+  const newId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+  // Nur http(s)-Links zulassen; fehlendes Schema wird zu https:// ergänzt
+  function normalizeUrl(input) {
+    let v = (input || '').trim();
+    if (!v) return null;
+    if (!/^[a-z][a-z0-9+.-]*:/i.test(v)) v = 'https://' + v;
+    try {
+      const u = new URL(v);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+      if (!u.hostname || (!u.hostname.includes('.') && u.hostname !== 'localhost')) return null;
+      return u.href;
+    } catch (e) { return null; }
+  }
+
+  // Aus dem Namen eine stabile Farbe für das Fallback-Cover erzeugen
+  function colorsFor(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    const hue = h % 360;
+    return `linear-gradient(145deg, hsl(${hue} 60% 42%), hsl(${(hue + 50) % 360} 65% 28%))`;
+  }
+
+  let statusTimer = null;
+  function showStatus(msg, type) {
+    statusBox.textContent = msg;
+    statusBox.className = 'status show ' + (type === 'err' ? 'err' : 'ok');
+    clearTimeout(statusTimer);
+    if (type !== 'err') statusTimer = setTimeout(() => { statusBox.className = 'status'; }, 4000);
+  }
+  function clearStatus() { statusBox.className = 'status'; statusBox.textContent = ''; }
+
+  function setError(input, errEl, msg) {
+    errEl.textContent = msg || '';
+    if (msg) input.setAttribute('aria-invalid', 'true'); else input.removeAttribute('aria-invalid');
+  }
+  function clearErrors() {
+    setError(fName, errName, ''); setError(fLink, errLink, '');
+    setError(fCoverUrl, errCoverUrl, ''); setError(fCoverFile, errCoverFile, '');
+  }
+
+  /* =====================================================
+   * Lokale Cover-Object-URLs
+   * ===================================================== */
+  async function ensureLocalCoverUrl(game) {
+    if (!game.hasLocalCover || coverUrls.has(game.id)) return;
+    try {
+      const blob = await dbGet(game.id);
+      if (blob) coverUrls.set(game.id, URL.createObjectURL(blob));
+    } catch (e) { /* Fallback-Darstellung greift */ }
+  }
+  function revokeCover(id) {
+    const u = coverUrls.get(id);
+    if (u) { URL.revokeObjectURL(u); coverUrls.delete(id); }
+  }
+
+  /* =====================================================
+   * Rendering
+   * ===================================================== */
+  function buildFallback(name) {
+    const d = document.createElement('div');
+    d.className = 'fallback';
+    d.style.background = colorsFor(name);
+    d.textContent = name;
+    d.setAttribute('aria-hidden', 'true');
+    return d;
+  }
+
+  function buildCard(game) {
+    const li = document.createElement('li');
+    li.className = 'card' + (game.played ? ' played' : '');
+
+    // Cover (Link)
+    const a = document.createElement('a');
+    a.className = 'cover-link';
+    a.href = game.link;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.setAttribute('aria-label', `${game.name} – Link in neuem Tab öffnen`);
+
+    const src = coverUrls.get(game.id) || game.coverUrl;
+    if (src) {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = '';                 // Name steht darunter und im aria-label
+      img.loading = 'lazy';
+      img.referrerPolicy = 'no-referrer';
+      img.addEventListener('error', () => {
+        img.replaceWith(buildFallback(game.name));
+      });
+      a.appendChild(img);
+    } else {
+      a.appendChild(buildFallback(game.name));
+    }
+    if (game.played) {
+      const b = document.createElement('span');
+      b.className = 'badge';
+      b.textContent = '✓ Gespielt';
+      a.appendChild(b);
+    }
+    li.appendChild(a);
+
+    // Körper
+    const body = document.createElement('div');
+    body.className = 'card-body';
+
+    const title = document.createElement('h3');
+    title.className = 'card-title';
+    title.textContent = game.name;
+    body.appendChild(title);
+
+    const label = document.createElement('label');
+    label.className = 'check';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = game.played;
+    cb.addEventListener('change', () => togglePlayed(game.id, cb.checked));
+    const span = document.createElement('span');
+    span.textContent = 'Gespielt';
+    const sr = document.createElement('span');
+    sr.className = 'sr-only';
+    sr.textContent = ': ' + game.name;
+    label.append(cb, span, sr);
+    body.appendChild(label);
+
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'small';
+    editBtn.textContent = 'Bearbeiten';
+    editBtn.setAttribute('aria-label', `${game.name} bearbeiten`);
+    editBtn.addEventListener('click', () => startEdit(game.id));
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'small danger';
+    delBtn.textContent = 'Löschen';
+    delBtn.setAttribute('aria-label', `${game.name} löschen`);
+    delBtn.addEventListener('click', () => deleteGame(game.id));
+    actions.append(editBtn, delBtn);
+    body.appendChild(actions);
+
+    li.appendChild(body);
+    return li;
+  }
+
+  function visibleGames() {
+    const q = query.trim().toLowerCase();
+    return games
+      .filter((g) => filter === 'all' || (filter === 'played' ? g.played : !g.played))
+      .filter((g) => !q || g.name.toLowerCase().includes(q))
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  function render() {
+    const list = visibleGames();
+    gallery.replaceChildren(...list.map(buildCard));
+
+    const played = games.filter((g) => g.played).length;
+    counter.textContent = games.length
+      ? `${list.length} von ${games.length} Spielen angezeigt · ${played} gespielt, ${games.length - played} offen`
+      : '';
+
+    if (!list.length) {
+      emptyBox.hidden = false;
+      if (!games.length) {
+        emptyBox.textContent = 'Noch keine Spiele auf der Wunschliste. Füge oben dein erstes Spiel hinzu!';
+      } else if (query.trim()) {
+        emptyBox.textContent = `Keine Treffer für „${query.trim()}“ in diesem Filter.`;
+      } else {
+        emptyBox.textContent = filter === 'played' ? 'Noch kein Spiel als gespielt markiert.' : 'Keine offenen Spiele – alles durchgespielt! 🎉';
+      }
+    } else {
+      emptyBox.hidden = true;
+    }
+  }
+
+  /* =====================================================
+   * Aktionen
+   * ===================================================== */
+  function togglePlayed(id, value) {
+    const g = games.find((x) => x.id === id);
+    if (!g) return;
+    g.played = value;
+    saveGames();
+    render();
+  }
+
+  async function deleteGame(id) {
+    const g = games.find((x) => x.id === id);
+    if (!g) return;
+    if (!confirm(`„${g.name}“ wirklich von der Wunschliste löschen?`)) return;
+    games = games.filter((x) => x.id !== id);
+    saveGames();
+    revokeCover(id);
+    if (g.hasLocalCover) { try { await dbDelete(id); } catch (e) { /* ignorieren */ } }
+    if (editingId === id) resetForm();
+    render();
+    showStatus(`„${g.name}“ wurde gelöscht.`, 'ok');
+  }
+
+  function startEdit(id) {
+    const g = games.find((x) => x.id === id);
+    if (!g) return;
+    editingId = id;
+    clearErrors(); clearStatus();
+    fName.value = g.name;
+    fLink.value = g.link;
+    fCoverUrl.value = g.coverUrl || '';
+    fCoverFile.value = '';
+    fRemoveCover.checked = false;
+
+    const src = coverUrls.get(g.id) || g.coverUrl;
+    if (src) {
+      currentCoverImg.src = src;
+      currentCover.hidden = false;
+    } else {
+      currentCover.hidden = true;
+    }
+    formTitle.textContent = 'Spiel bearbeiten';
+    submitBtn.textContent = 'Änderungen speichern';
+    cancelBtn.hidden = false;
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    fName.focus();
+  }
+
+  function resetForm() {
+    editingId = null;
+    form.reset();
+    clearErrors();
+    currentCover.hidden = true;
+    currentCoverImg.removeAttribute('src');
+    formTitle.textContent = 'Spiel hinzufügen';
+    submitBtn.textContent = 'Hinzufügen';
+    cancelBtn.hidden = true;
+  }
+
+  /* =====================================================
+   * Formular absenden (Hinzufügen / Bearbeiten)
+   * ===================================================== */
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearErrors(); clearStatus();
+
+    const name = fName.value.trim();
+    const link = normalizeUrl(fLink.value);
+    const coverUrlRaw = fCoverUrl.value.trim();
+    const coverUrl = coverUrlRaw ? normalizeUrl(coverUrlRaw) : '';
+    const file = fCoverFile.files && fCoverFile.files[0];
+
+    // --- Validierung ---
+    let firstInvalid = null;
+    if (!name) {
+      setError(fName, errName, 'Bitte gib einen Spielnamen ein.');
+      firstInvalid = firstInvalid || fName;
+    }
+    if (!fLink.value.trim()) {
+      setError(fLink, errLink, 'Bitte gib einen Link zum Spiel ein.');
+      firstInvalid = firstInvalid || fLink;
+    } else if (!link) {
+      setError(fLink, errLink, 'Der Link ist ungültig. Erlaubt sind http(s)-Adressen, z. B. https://store.example.com/spiel');
+      firstInvalid = firstInvalid || fLink;
+    }
+    if (coverUrlRaw && !coverUrl) {
+      setError(fCoverUrl, errCoverUrl, 'Die Bild-URL ist ungültig. Erlaubt sind http(s)-Adressen.');
+      firstInvalid = firstInvalid || fCoverUrl;
+    }
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError(fCoverFile, errCoverFile, 'Die gewählte Datei ist kein Bild.');
+        firstInvalid = firstInvalid || fCoverFile;
+      } else if (file.size > MAX_FILE_BYTES) {
+        setError(fCoverFile, errCoverFile, 'Das Bild ist zu groß (maximal 8 MB).');
+        firstInvalid = firstInvalid || fCoverFile;
+      }
+    }
+    if (firstInvalid) { firstInvalid.focus(); return; }
+
+    const existing = editingId ? games.find((g) => g.id === editingId) : null;
+    const id = existing ? existing.id : newId();
+    let hasLocalCover = existing ? existing.hasLocalCover : false;
+    let imageProblem = '';
+
+    // --- Lokales Bild speichern (IndexedDB) ---
+    if (file) {
+      try {
+        await dbPut(id, file);
+        hasLocalCover = true;
+        revokeCover(id);
+        coverUrls.set(id, URL.createObjectURL(file));
+      } catch (err) {
+        imageProblem = 'Die Bilddatei konnte nicht lokal gespeichert werden (IndexedDB nicht verfügbar oder Speicher voll). Das Spiel wurde ohne lokales Cover gespeichert.';
+      }
+    } else if (existing && existing.hasLocalCover && fRemoveCover.checked) {
+      try { await dbDelete(id); } catch (err) { /* ignorieren */ }
+      revokeCover(id);
+      hasLocalCover = false;
+    }
+
+    // URL: neu angegebene übernehmen; beim Entfernen oder leerem Feld verwerfen
+    const finalCoverUrl = fRemoveCover.checked ? '' : (coverUrl || '');
+
+    if (existing) {
+      existing.name = name;
+      existing.link = link;
+      existing.coverUrl = finalCoverUrl;
+      existing.hasLocalCover = hasLocalCover;
+    } else {
+      games.push({ id, name, link, coverUrl: finalCoverUrl, hasLocalCover, played: false, createdAt: Date.now() });
+    }
+
+    const saved = saveGames();
+    render();
+    resetForm();
+
+    if (imageProblem) {
+      showStatus(imageProblem, 'err');
+    } else if (saved) {
+      showStatus(existing ? `„${name}“ wurde aktualisiert.` : `„${name}“ wurde zur Wunschliste hinzugefügt.`, 'ok');
+    }
+    fName.focus();
+  });
+
+  cancelBtn.addEventListener('click', () => { resetForm(); clearStatus(); });
+
+  // Vorschau der neu gewählten Datei im Formular
+  fCoverFile.addEventListener('change', () => {
+    setError(fCoverFile, errCoverFile, '');
+    const f = fCoverFile.files && fCoverFile.files[0];
+    if (f && f.type.startsWith('image/') && f.size <= MAX_FILE_BYTES) {
+      const u = URL.createObjectURL(f);
+      currentCoverImg.onload = () => URL.revokeObjectURL(u);
+      currentCoverImg.src = u;
+      currentCover.hidden = false;
+    } else if (f) {
+      setError(fCoverFile, errCoverFile, !f.type.startsWith('image/') ? 'Die gewählte Datei ist kein Bild.' : 'Das Bild ist zu groß (maximal 8 MB).');
+    }
+  });
+
+  /* =====================================================
+   * Suche & Filter
+   * ===================================================== */
+  searchInput.addEventListener('input', () => { query = searchInput.value; render(); });
+  document.querySelectorAll('[data-filter]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      filter = btn.dataset.filter;
+      document.querySelectorAll('[data-filter]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      render();
+    });
+  });
+
+  /* =====================================================
+   * Start
+   * ===================================================== */
+  async function init() {
+    games = loadGames();
+    render(); // Sofort anzeigen (sauberer Start auch ohne Daten)
+    db = await openDb();
+    if (db) {
+      await Promise.all(games.filter((g) => g.hasLocalCover).map(ensureLocalCoverUrl));
+      render(); // Erneut rendern, sobald lokale Cover verfügbar sind
+    } else if (games.some((g) => g.hasLocalCover)) {
+      showStatus('Lokal gespeicherte Cover konnten nicht geladen werden (IndexedDB nicht verfügbar).', 'err');
+    }
+  }
+  init();
+})();
+</script>
+</body>
+</html>
